@@ -34,7 +34,7 @@ SahaySetu lets field workers describe any situation naturally in Hindi or Englis
 
 ## Live Demo
 Click the below link to open SahaySetu :  
-[Open SahaySetu](https://beamish-alfajores-27dc5b.netlify.app/)
+[Open SahaySetu](https://sahaysetu.netlify.app/)
 
 ---
 
