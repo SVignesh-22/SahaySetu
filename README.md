@@ -14,7 +14,7 @@ SahaySetu lets field workers describe any situation naturally in Hindi or Englis
 ---
 
 ## How It Works
-1. Field worker types or speaks a need — _"50 families in Dharavi have had no food for 2 days . Need medical help urgently "_
+1. Field worker types or speaks a need — _"50 families in Dharavi have had no food for 2 days,very urgent "_
 2. Gemini AI analyses the full context and extracts structured data
 3. Need appears on the live map with colour-coded urgency
 4. Coordinators see all active needs sorted by priority and assign volunteers
