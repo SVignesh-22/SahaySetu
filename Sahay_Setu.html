@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SahaySetu — Bridge to Help</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:#f5f7f2;color:#1a2e1a;min-height:100vh}
+.hidden{display:none!important}
+
+#login-page{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;background:linear-gradient(160deg,#e8f5e9 0%,#f5f7f2 60%)}
+.app-icon{width:84px;height:84px;background:linear-gradient(135deg,#2e7d32,#43a047);border-radius:28px;display:flex;align-items:center;justify-content:center;margin:0 auto 1.2rem;box-shadow:0 12px 32px rgba(46,125,50,0.3)}
+.app-icon svg{width:46px;height:46px;fill:white}
+.app-name{font-size:2.6rem;font-weight:800;color:#1b5e20;letter-spacing:-1.5px;text-align:center}
+.app-name span{color:#43a047}
+.tagline{font-size:0.95rem;color:#6a8f6a;margin-top:0.4rem;margin-bottom:2rem;font-weight:500;text-align:center}
+.login-card{background:white;border-radius:28px;padding:2.2rem;width:100%;max-width:380px;box-shadow:0 8px 48px rgba(0,0,0,0.1)}
+.lc-title{font-size:1.2rem;font-weight:800;color:#1b5e20;margin-bottom:0.3rem}
+.lc-sub{font-size:0.83rem;color:#999;margin-bottom:1.8rem;font-weight:500}
+.field-wrap{margin-bottom:1.1rem}
+.field-label{font-size:0.72rem;font-weight:800;color:#4a7c4a;margin-bottom:0.45rem;text-transform:uppercase;letter-spacing:0.7px;display:block}
+.field-input{width:100%;padding:0.85rem 1.1rem;border:1.5px solid #e0ede0;border-radius:14px;font-size:0.93rem;font-family:inherit;outline:none;transition:all 0.2s;background:#fafff9;color:#1a2e1a}
+.field-input:focus{border-color:#2e7d32;background:white;box-shadow:0 0 0 4px rgba(46,125,50,0.08)}
+.btn-primary{width:100%;padding:0.95rem;background:linear-gradient(135deg,#2e7d32,#388e3c);color:white;border:none;border-radius:14px;font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 6px 20px rgba(46,125,50,0.3);transition:all 0.2s}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(46,125,50,0.35)}
+.btn-primary:active{transform:translateY(0)}
+
+#main-app{display:none;flex-direction:column;min-height:100vh}
+.topbar{background:linear-gradient(135deg,#1b5e20,#2e7d32);color:white;padding:1.1rem 1.3rem;display:flex;align-items:center;justify-content:space-between}
+.tb-left{display:flex;align-items:center;gap:0.8rem}
+.tb-icon{width:38px;height:38px;background:rgba(255,255,255,0.18);border-radius:12px;display:flex;align-items:center;justify-content:center}
+.tb-icon svg{width:22px;height:22px;fill:white}
+.tb-name{font-size:1.15rem;font-weight:800;letter-spacing:-0.5px}
+.tb-sub{font-size:0.72rem;opacity:0.72;margin-top:1px;font-weight:500}
+.user-chip{background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);padding:0.4rem 1rem;border-radius:20px;font-size:0.8rem;font-weight:700;border:1px solid rgba(255,255,255,0.25)}
+
+.tabs{display:flex;background:white;border-bottom:2px solid #f0f7f0;padding:0 0.8rem}
+.tab{flex:1;padding:0.95rem 0.5rem;text-align:center;cursor:pointer;font-size:0.85rem;font-weight:700;color:#999;border-bottom:3px solid transparent;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:0.4rem;margin-bottom:-2px}
+.tab.active{color:#2e7d32;border-bottom-color:#2e7d32}
+
+.page{display:none;padding:1.1rem;overflow-y:auto}
+.page.active{display:block}
+
+.map-wrap{height:220px;border-radius:20px;overflow:hidden;margin-bottom:1rem;box-shadow:0 4px 24px rgba(0,0,0,0.1);border:1.5px solid #e0ede0}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:0.65rem;margin-bottom:1rem}
+.stat-card{background:white;border-radius:16px;padding:1rem 0.7rem;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,0.05);border:1.5px solid #f0f7f0}
+.stat-num{font-size:1.7rem;font-weight:800;color:#2e7d32;line-height:1}
+.stat-num.red{color:#e53935}
+.stat-num.blue{color:#1565c0}
+.stat-label{font-size:0.68rem;color:#aaa;font-weight:700;margin-top:0.3rem;text-transform:uppercase;letter-spacing:0.5px}
+
+.filter-row{display:flex;gap:0.5rem;margin-bottom:1rem;overflow-x:auto;padding-bottom:0.3rem;-ms-overflow-style:none;scrollbar-width:none}
+.filter-row::-webkit-scrollbar{display:none}
+.filter-btn{padding:0.45rem 1rem;border-radius:20px;border:1.5px solid #d0e8d0;background:white;font-size:0.8rem;cursor:pointer;white-space:nowrap;color:#4a7c4a;font-weight:700;font-family:inherit;transition:all 0.15s}
+.filter-btn.active{background:#2e7d32;color:white;border-color:#2e7d32}
+
+.need-card{background:white;border-radius:18px;padding:1.1rem 1.2rem;margin-bottom:0.8rem;box-shadow:0 2px 12px rgba(0,0,0,0.05);border:1.5px solid #f0f0f0;border-left:5px solid #ddd;transition:transform 0.15s}
+.need-card:hover{transform:translateY(-2px)}
+.need-card.urgent{border-left-color:#e53935;background:linear-gradient(to right,#fff5f5,white 40%)}
+.need-card.high{border-left-color:#fb8c00;background:linear-gradient(to right,#fffbf5,white 40%)}
+.need-card.medium{border-left-color:#f9a825;background:linear-gradient(to right,#fffef5,white 40%)}
+.need-card.low{border-left-color:#43a047;background:linear-gradient(to right,#f5fff5,white 40%)}
+.nc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.55rem}
+.nc-loc{font-size:1rem;font-weight:800;color:#1a2e1a}
+.nc-res{font-size:0.8rem;color:#777;margin-top:0.15rem;font-weight:500}
+.nc-meta{display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.5rem}
+.pill{background:#f0f7f0;color:#2e7d32;font-size:0.73rem;padding:0.25rem 0.65rem;border-radius:20px;font-weight:700}
+.urgency-badge{display:inline-block;padding:0.25rem 0.7rem;border-radius:20px;font-size:0.75rem;font-weight:800}
+.urgency-urgent{background:#ffebee;color:#c62828}
+.urgency-high{background:#fff3e0;color:#e65100}
+.urgency-medium{background:#fff8e1;color:#f57f17}
+.urgency-low{background:#e8f5e9;color:#2e7d32}
+.btn-done{padding:0.42rem 0.9rem;background:#f0f7f0;color:#2e7d32;border:1.5px solid #c8e6c9;border-radius:10px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.15s}
+.btn-done:hover{background:#c8e6c9}
+.assessment-text{font-size:0.78rem;color:#888;margin-bottom:0.6rem;line-height:1.4;font-style:italic;padding:0.5rem 0.7rem;background:#f9f9f9;border-radius:8px}
+
+.section-card{background:white;border-radius:22px;padding:1.4rem;box-shadow:0 2px 20px rgba(0,0,0,0.06);margin-bottom:1rem;border:1.5px solid #f0f7f0}
+.sc-title{font-size:1.1rem;font-weight:800;color:#1b5e20;margin-bottom:0.3rem}
+.sc-sub{font-size:0.83rem;color:#999;margin-bottom:1.3rem;font-weight:500;line-height:1.5}
+.ai-badge{display:inline-flex;align-items:center;background:#e8f5e9;color:#2e7d32;font-size:0.7rem;font-weight:800;padding:0.2rem 0.6rem;border-radius:20px;margin-left:0.5rem;vertical-align:middle}
+
+.voice-btn{width:100%;padding:0.8rem;border:1.5px solid #e0ede0;border-radius:14px;background:#fafff9;font-size:0.88rem;font-weight:700;cursor:pointer;font-family:inherit;color:#4a7c4a;display:flex;align-items:center;justify-content:center;gap:0.6rem;transition:all 0.2s;margin-bottom:0.8rem}
+.voice-btn:hover{border-color:#2e7d32;background:#f0f7f0}
+.voice-btn.recording{background:#ffebee;border-color:#e53935;color:#c62828;animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.65}}
+
+.need-textarea{width:100%;padding:0.95rem 1.1rem;border:1.5px solid #e0ede0;border-radius:14px;font-size:0.9rem;resize:none;outline:none;font-family:inherit;background:#fafff9;transition:all 0.2s;line-height:1.6;color:#1a2e1a}
+.need-textarea:focus{border-color:#2e7d32;background:white;box-shadow:0 0 0 4px rgba(46,125,50,0.08)}
+
+.preview-wrap{background:#f8fff8;border-radius:16px;padding:1.1rem;border:1.5px solid #c8e6c9;margin-bottom:1rem}
+.prev-raw{font-size:0.83rem;color:#666;font-style:italic;margin-bottom:1rem;padding:0.7rem 0.9rem;background:white;border-radius:10px;border:1px solid #e8f5e9;line-height:1.5}
+.prev-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:1rem}
+.prev-item label{font-size:0.7rem;font-weight:800;color:#aaa;text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:0.3rem}
+.prev-item span{font-size:0.95rem;font-weight:800;color:#1a2e1a}
+.prev-assessment{font-size:0.82rem;color:#555;line-height:1.5;padding:0.7rem 0.9rem;background:white;border-radius:10px;border:1px solid #e8f5e9;margin-bottom:1rem;font-style:italic}
+.pbar-wrap{margin-bottom:1rem}
+.pbar-label{display:flex;justify-content:space-between;font-size:0.75rem;margin-bottom:0.4rem}
+.pbar-label span:first-child{color:#aaa;font-weight:700}
+.pbar-label span:last-child{font-weight:800;color:#1b5e20}
+.pbar{height:10px;background:#e8f5e9;border-radius:5px;overflow:hidden}
+.pbar-fill{height:100%;border-radius:5px;transition:width 0.7s ease}
+.btn-row{display:flex;gap:0.7rem}
+.btn-confirm{flex:2;padding:0.85rem;background:linear-gradient(135deg,#2e7d32,#388e3c);color:white;border:none;border-radius:12px;font-size:0.9rem;font-weight:700;cursor:pointer;font-family:inherit}
+.btn-cancel{flex:1;padding:0.85rem;background:white;color:#888;border:1.5px solid #e0e0e0;border-radius:12px;font-size:0.9rem;cursor:pointer;font-family:inherit}
+
+.loading-wrap{text-align:center;padding:3rem 1rem}
+.spinner{width:40px;height:40px;border:3.5px solid #c8e6c9;border-top-color:#2e7d32;border-radius:50%;animation:spin 0.75s linear infinite;margin:0 auto 1.2rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-title{font-size:1rem;font-weight:700;color:#2e7d32;margin-bottom:0.3rem}
+.loading-sub{font-size:0.82rem;color:#aaa;font-weight:500}
+
+.success-wrap{text-align:center;padding:2.5rem 1rem}
+.success-circle{width:80px;height:80px;background:linear-gradient(135deg,#2e7d32,#43a047);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.3rem;box-shadow:0 10px 30px rgba(46,125,50,0.3)}
+.success-circle svg{width:40px;height:40px;fill:white}
+.success-title{font-size:1.3rem;font-weight:800;color:#1b5e20;margin-bottom:0.4rem}
+.success-sub{font-size:0.85rem;color:#999;margin-bottom:1.8rem;font-weight:500}
+.btn-again{padding:0.9rem 2.2rem;background:linear-gradient(135deg,#2e7d32,#388e3c);color:white;border:none;border-radius:14px;font-size:0.95rem;font-weight:700;cursor:pointer;font-family:inherit}
+
+.not-need-wrap{text-align:center;padding:2rem}
+.not-need-icon{font-size:3rem;margin-bottom:1rem}
+.not-need-title{font-size:1.1rem;font-weight:800;color:#e65100;margin-bottom:0.8rem}
+.not-need-msg{font-size:0.88rem;color:#666;margin-bottom:1.5rem;line-height:1.6;background:#fff8e1;border-radius:12px;padding:1rem;border:1px solid #ffe082;text-align:left}
+.btn-tryagain{padding:0.85rem 2rem;background:linear-gradient(135deg,#2e7d32,#388e3c);color:white;border:none;border-radius:12px;font-size:0.9rem;font-weight:700;cursor:pointer;font-family:inherit}
+
+.tips-box{background:#f0f7f0;border-radius:16px;padding:1.1rem 1.2rem;border:1.5px solid #c8e6c9;margin-top:0.5rem}
+.tips-title{font-size:0.75rem;font-weight:800;color:#2e7d32;text-transform:uppercase;letter-spacing:0.7px;margin-bottom:0.7rem}
+.tips-box li{font-size:0.82rem;color:#555;margin-left:1rem;margin-bottom:0.35rem;line-height:1.5}
+
+.empty-state{text-align:center;padding:3.5rem 1rem}
+.empty-emoji{font-size:3.5rem;margin-bottom:0.9rem}
+.empty-title{font-size:1rem;font-weight:700;color:#bbb;margin-bottom:0.3rem}
+.empty-sub{font-size:0.82rem;color:#ccc}
+
+.signin-banner{background:#1b5e20;color:white;padding:0.9rem 1.2rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;border-radius:16px;margin-bottom:1rem}
+.signin-banner span{font-size:0.83rem;font-weight:600;line-height:1.4}
+.btn-signin{background:white;color:#1b5e20;border:none;padding:0.5rem 1.1rem;border-radius:10px;font-size:0.82rem;font-weight:800;cursor:pointer;white-space:nowrap;font-family:inherit}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-page">
+  <div class="app-icon">
+    <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+  </div>
+  <div class="app-name">Sahay<span>Setu</span></div>
+  <div class="tagline">Bridging Volunteers to Those in Need</div>
+  <div class="login-card">
+    <div class="lc-title">Welcome</div>
+    <div class="lc-sub">Enter your details to get started</div>
+    <div class="field-wrap">
+      <label class="field-label">Your Name</label>
+      <input class="field-input" id="login-name" placeholder="e.g. Priya Sharma"/>
+    </div>
+    <div class="field-wrap">
+      <label class="field-label">Your Role</label>
+      <select class="field-input" id="login-role">
+        <option value="coordinator">NGO Coordinator</option>
+        <option value="volunteer">Volunteer</option>
+        <option value="fieldworker">Field Worker</option>
+      </select>
+    </div>
+    <button class="btn-primary" onclick="doLogin()">Enter SahaySetu →</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="main-app">
+  <div class="topbar">
+    <div class="tb-left">
+      <div class="tb-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+      </div>
+      <div>
+        <div class="tb-name">SahaySetu</div>
+        <div class="tb-sub">NGO Volunteer Coordination</div>
+      </div>
+    </div>
+    <div class="user-chip" id="user-badge">User</div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('dashboard')">🗺️ Dashboard</div>
+    <div class="tab" onclick="switchTab('report')">📋 Report Need</div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="page-dashboard" class="page active">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:0.5rem 0 0.8rem">
+      <div style="font-size:1rem;font-weight:800;color:#1b5e20">Live Needs Map</div>
+      <div style="font-size:0.73rem;color:#aaa;font-weight:600">India</div>
+    </div>
+    <div class="map-wrap" id="map"></div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Total</div></div>
+      <div class="stat-card"><div class="stat-num red" id="stat-urgent">0</div><div class="stat-label">Urgent</div></div>
+      <div class="stat-card"><div class="stat-num blue" id="stat-done">0</div><div class="stat-label">Resolved</div></div>
+    </div>
+    <div class="filter-row">
+      <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+      <button class="filter-btn" onclick="setFilter('urgent',this)">🔴 Urgent</button>
+      <button class="filter-btn" onclick="setFilter('high',this)">🟠 High</button>
+      <button class="filter-btn" onclick="setFilter('medium',this)">🟡 Medium</button>
+      <button class="filter-btn" onclick="setFilter('low',this)">🟢 Low</button>
+    </div>
+    <div id="needs-list"></div>
+  </div>
+
+  <!-- REPORT -->
+  <div id="page-report" class="page">
+    <div id="report-idle">
+      <!-- Sign in banner — shown until signed into Puter -->
+      <div class="signin-banner" id="signin-banner">
+        <span>🔐 Sign in with Google to enable Gemini AI analysis</span>
+        <button class="btn-signin" onclick="signInPuter()">Sign In</button>
+      </div>
+      <div class="section-card">
+        <div class="sc-title">Report a Need <span class="ai-badge">✦ Gemini AI</span></div>
+        <div class="sc-sub">Describe any situation naturally in Hindi or English. Gemini understands full context — no keywords needed.</div>
+        <button class="voice-btn" id="voice-btn" onclick="toggleVoice()">
+          <span id="voice-icon">🎙️</span>
+          <span id="voice-label">Tap to Speak (Hindi / English)</span>
+        </button>
+        <textarea class="need-textarea" id="need-text" rows="5" placeholder='Describe naturally, e.g:
+"50 families in Dharavi Mumbai have no food since 2 days"
+"Koramangala mein accident hua hai ambulance chahiye"
+"Chennai flood area needs rescue immediately"
+"Some blankets needed in Shimla, not urgent"'></textarea>
+        <button class="btn-primary" onclick="processNeed()" style="margin-top:0.9rem">Analyse with Gemini AI ✦</button>
+      </div>
+      <div class="tips-box">
+        <div class="tips-title">How it works</div>
+        <ul>
+          <li>Sign in once with Google → Gemini AI activates</li>
+          <li>Works for any city or area across India</li>
+          <li>Hindi, English, or Hinglish — all understood</li>
+          <li>Non-emergency text gets rejected automatically</li>
+          <li>Gemini assigns real GPS coordinates for the map</li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="report-loading" class="hidden">
+      <div class="loading-wrap">
+        <div class="spinner"></div>
+        <div class="loading-title">Gemini is analysing...</div>
+        <div class="loading-sub">Understanding full context of your message</div>
+      </div>
+    </div>
+
+    <div id="report-preview" class="hidden">
+      <div class="section-card">
+        <div class="sc-title">Gemini's Analysis <span class="ai-badge">✦ AI</span></div>
+        <div class="sc-sub">Review before saving to dashboard</div>
+        <div class="preview-wrap">
+          <div class="prev-raw" id="preview-raw"></div>
+          <div class="prev-grid">
+            <div class="prev-item"><label>Location</label><span id="prev-location">—</span></div>
+            <div class="prev-item"><label>Urgency</label><span id="prev-urgency">—</span></div>
+            <div class="prev-item"><label>Resource Needed</label><span id="prev-resource">—</span></div>
+            <div class="prev-item"><label>People Affected</label><span id="prev-people">—</span></div>
+          </div>
+          <div style="margin-bottom:1rem">
+            <div style="font-size:0.7rem;font-weight:800;color:#aaa;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:0.3rem">Gemini's Assessment</div>
+            <div class="prev-assessment" id="prev-assessment"></div>
+          </div>
+          <div class="pbar-wrap">
+            <div class="pbar-label"><span>Priority Score</span><span id="prev-score">—</span></div>
+            <div class="pbar"><div class="pbar-fill" id="prev-bar" style="width:0%"></div></div>
+          </div>
+          <div class="btn-row">
+            <button class="btn-cancel" onclick="resetReport()">Cancel</button>
+            <button class="btn-confirm" onclick="confirmSave()">Confirm & Save ✓</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="report-not-need" class="hidden">
+      <div class="not-need-wrap">
+        <div class="not-need-icon">🤔</div>
+        <div class="not-need-title">Not a community need</div>
+        <div class="not-need-msg" id="not-need-reason"></div>
+        <button class="btn-tryagain" onclick="resetReport()">Try Again</button>
+      </div>
+    </div>
+
+    <div id="report-success" class="hidden">
+      <div class="success-wrap">
+        <div class="success-circle">
+          <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+        </div>
+        <div class="success-title">Need Reported! 🎉</div>
+        <div class="success-sub">Saved and visible to all volunteers on the dashboard.</div>
+        <button class="btn-again" onclick="resetReport()">Report Another Need</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://js.puter.com/v2/"></script>
+<script>
+let userName = '', userRole = '';
+let needs = JSON.parse(localStorage.getItem('ss_needs') || '[]');
+let doneCount = parseInt(localStorage.getItem('ss_done') || '0');
+let currentFilter = 'all';
+let extractedData = null;
+let map = null;
+let markers = [];
+let recognition = null;
+let isRecording = false;
+let puterSignedIn = false;
+
+function saveNeeds() {
+  localStorage.setItem('ss_needs', JSON.stringify(needs));
+  localStorage.setItem('ss_done', String(doneCount));
+}
+
+// ── PUTER SIGN IN ─────────────────────────────────────────
+// Called by the explicit Sign In button — this is a direct user gesture
+// so the popup is ALWAYS allowed by the browser
+async function signInPuter() {
+  try {
+    await puter.auth.signIn();
+    puterSignedIn = true;
+    document.getElementById('signin-banner').style.display = 'none';
+  } catch(e) {
+    // user closed popup — leave banner visible
+  }
+}
+
+// Check on load if already signed in from a previous session
+window.addEventListener('load', () => {
+  setTimeout(async () => {
+    try {
+      // puter.auth.getUser() resolves if already signed in, throws if not
+      await puter.auth.getUser();
+      puterSignedIn = true;
+      const b = document.getElementById('signin-banner');
+      if (b) b.style.display = 'none';
+    } catch(e) {
+      // not signed in yet — banner stays
+    }
+  }, 1500);
+});
+
+// ── LOGIN ─────────────────────────────────────────────────
+function doLogin() {
+  const n = document.getElementById('login-name').value.trim();
+  if (!n) { alert('Please enter your name'); return; }
+  userName = n;
+  userRole = document.getElementById('login-role').value;
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('main-app').style.display = 'flex';
+  document.getElementById('user-badge').textContent = n;
+  setTimeout(initMap, 300);
+  renderNeeds();
+}
+
+// ── TABS ──────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t, i) =>
+    t.classList.toggle('active', (i===0&&tab==='dashboard')||(i===1&&tab==='report'))
+  );
+  document.getElementById('page-dashboard').classList.toggle('active', tab==='dashboard');
+  document.getElementById('page-report').classList.toggle('active', tab==='report');
+  if (tab==='dashboard') setTimeout(()=>{ if(map) map.invalidateSize(); },150);
+}
+
+// ── MAP ───────────────────────────────────────────────────
+function initMap() {
+  if (map) return;
+  map = L.map('map',{zoomControl:true,attributionControl:true}).setView([20.5937,78.9629],4);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+    subdomains:'abcd',maxZoom:19,attribution:'© CartoDB © OpenStreetMap'
+  }).addTo(map);
+  updateMapMarkers();
+}
+
+function updateMapMarkers() {
+  if (!map) return;
+  markers.forEach(m=>map.removeLayer(m));
+  markers=[];
+  needs.forEach(n=>{
+    const c=n.urgency==='urgent'?'#e53935':n.urgency==='high'?'#fb8c00':n.urgency==='medium'?'#f9a825':'#43a047';
+    const icon=L.divIcon({className:'',html:`<div style="width:16px;height:16px;background:${c};border:2.5px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.35)"></div>`,iconSize:[16,16],iconAnchor:[8,8]});
+    const m=L.marker([n.lat,n.lng],{icon}).addTo(map);
+    m.bindPopup(`<div style="font-family:sans-serif;min-width:160px;padding:4px">
+      <div style="font-weight:800;font-size:13px;margin-bottom:4px">📍 ${n.location}</div>
+      <div style="font-size:11px;color:#666;margin-bottom:3px">${n.resourceType} · ${n.numberOfPeople} people</div>
+      <div style="font-size:11px;font-weight:700;color:${c}">${n.urgency.toUpperCase()} · Score: ${n.priorityScore}/100</div>
+      ${n.assessment?`<div style="font-size:10px;color:#aaa;margin-top:3px;font-style:italic">${n.assessment}</div>`:''}
+    </div>`);
+    markers.push(m);
+  });
+  if(markers.length>0){const g=L.featureGroup(markers);map.fitBounds(g.getBounds().pad(0.3));}
+}
+
+// ── FILTER & RENDER ───────────────────────────────────────
+function setFilter(f,el){
+  currentFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  renderNeeds();
+}
+
+function renderNeeds(){
+  const sorted=[...needs].sort((a,b)=>b.priorityScore-a.priorityScore);
+  const filtered=currentFilter==='all'?sorted:sorted.filter(n=>n.urgency===currentFilter);
+  document.getElementById('stat-total').textContent=needs.length;
+  document.getElementById('stat-urgent').textContent=needs.filter(n=>n.urgency==='urgent').length;
+  document.getElementById('stat-done').textContent=doneCount;
+  const list=document.getElementById('needs-list');
+  if(!filtered.length){
+    list.innerHTML=`<div class="empty-state"><div class="empty-emoji">📋</div><div class="empty-title">No needs reported yet</div><div class="empty-sub">Use "Report Need" tab to add one</div></div>`;
+    return;
+  }
+  list.innerHTML=filtered.map(n=>`
+    <div class="need-card ${n.urgency}">
+      <div class="nc-top">
+        <div><div class="nc-loc">📍 ${n.location}</div><div class="nc-res">${n.resourceType}</div></div>
+        <span class="urgency-badge urgency-${n.urgency}">${n.urgency.charAt(0).toUpperCase()+n.urgency.slice(1)}</span>
+      </div>
+      <div class="nc-meta">
+        <span class="pill">👥 ${n.numberOfPeople} people</span>
+        <span class="pill">⚡ ${n.priorityScore}/100</span>
+        <span class="pill">By ${n.reportedBy}</span>
+      </div>
+      ${n.assessment?`<div class="assessment-text">"${n.assessment}"</div>`:''}
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.72rem;color:#ccc">${new Date(n.timestamp).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</span>
+        <button class="btn-done" onclick="markDone('${n.id}')">Mark as Done ✓</button>
+      </div>
+    </div>`).join('');
+}
+
+function markDone(id){
+  needs=needs.filter(n=>n.id!==id);
+  doneCount++;
+  saveNeeds();updateMapMarkers();renderNeeds();
+}
+
+// ── VOICE ─────────────────────────────────────────────────
+function toggleVoice(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){alert('Voice input requires Google Chrome.');return;}
+  if(isRecording){recognition.stop();return;}
+  recognition=new SR();
+  recognition.lang='hi-IN';recognition.interimResults=true;recognition.continuous=false;
+  let finalT='';
+  recognition.onstart=()=>{isRecording=true;document.getElementById('voice-btn').classList.add('recording');document.getElementById('voice-icon').textContent='⏹️';document.getElementById('voice-label').textContent='Listening... Tap to stop';};
+  recognition.onresult=(e)=>{let interim='';for(let i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal)finalT+=e.results[i][0].transcript;else interim+=e.results[i][0].transcript;}document.getElementById('need-text').value=finalT+(interim?` [${interim}]`:'');};
+  recognition.onend=()=>{isRecording=false;document.getElementById('voice-btn').classList.remove('recording');document.getElementById('voice-icon').textContent='🎙️';document.getElementById('voice-label').textContent='Tap to Speak (Hindi / English)';if(finalT)document.getElementById('need-text').value=finalT;};
+  recognition.onerror=()=>{isRecording=false;document.getElementById('voice-btn').classList.remove('recording');document.getElementById('voice-icon').textContent='🎙️';document.getElementById('voice-label').textContent='Tap to Speak (Hindi / English)';};
+  recognition.start();
+}
+
+// ── GEMINI CALL ───────────────────────────────────────────
+async function callGemini(prompt) {
+  // If not signed in yet, trigger sign in first (this is inside a user gesture chain)
+  if (!puterSignedIn) {
+    await puter.auth.signIn();
+    puterSignedIn = true;
+    const b = document.getElementById('signin-banner');
+    if (b) b.style.display = 'none';
+  }
+  const response = await puter.ai.chat(prompt, { model: 'gemini-2.0-flash' });
+// Handle all possible Puter response formats
+if (typeof response === 'string') return response;
+if (response?.message?.content) {
+  const c = response.message.content;
+  if (typeof c === 'string') return c;
+  if (Array.isArray(c)) return c[0]?.text || c[0] || '';
+}
+if (response?.text) return response.text;
+if (response?.content) {
+  const c = response.content;
+  if (typeof c === 'string') return c;
+  if (Array.isArray(c)) return c[0]?.text || c[0] || '';
+}
+// Last resort — stringify and let JSON parser find the object
+return JSON.stringify(response);
+}
+
+// ── PROCESS NEED ──────────────────────────────────────────
+async function processNeed(){
+  const text=document.getElementById('need-text').value.trim();
+  if(!text){alert('Please describe the situation first');return;}
+
+  document.getElementById('report-idle').classList.add('hidden');
+  document.getElementById('report-loading').classList.remove('hidden');
+
+  const prompt=`You are the AI brain of SahaySetu, an NGO volunteer coordination platform in India.
+A field worker submitted this message: "${text}"
+
+Tasks:
+1. Decide if this is a genuine community need/emergency/resource request
+2. If YES: extract structured details with precise GPS coordinates
+3. If NO: explain why
+
+RULES:
+- Use full context understanding, not keyword matching
+- Casual chat, test messages, jokes → NOT a need
+- Only urgent if genuinely life-threatening or time-critical
+- Use your geographic knowledge of India for accurate lat/lng
+
+Respond ONLY with valid JSON, no markdown:
+
+If genuine need:
+{"isNeed":true,"location":"specific place name","lat":number,"lng":number,"urgency":"urgent|high|medium|low","resourceType":"Food|Water|Medical Aid|Shelter|Clothing|Rescue|Sanitation|General Aid","numberOfPeople":integer,"priorityScore":1-100,"assessment":"2-3 sentences on urgency reasoning"}
+
+If NOT a need:
+{"isNeed":false,"reason":"friendly explanation"}
+
+Urgency: urgent=80-100 (life threat), high=60-79 (hours), medium=40-59 (days), low=1-39 (weeks)`;
+
+  try {
+    const txt = await callGemini(prompt);
+    const match = txt.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('no json');
+    const d = JSON.parse(match[0]);
+
+    document.getElementById('report-loading').classList.add('hidden');
+
+    if (!d.isNeed) {
+      document.getElementById('report-not-need').classList.remove('hidden');
+      document.getElementById('not-need-reason').textContent = d.reason || 'This does not appear to be a community need.';
+      return;
+    }
+
+    extractedData = {
+      location: d.location||'Unknown Location',
+      lat: parseFloat(d.lat)||20.5937,
+      lng: parseFloat(d.lng)||78.9629,
+      urgency: ['urgent','high','medium','low'].includes(d.urgency)?d.urgency:'medium',
+      resourceType: d.resourceType||'General Aid',
+      numberOfPeople: Math.max(1,parseInt(d.numberOfPeople)||1),
+      priorityScore: Math.min(100,Math.max(1,parseInt(d.priorityScore)||50)),
+      assessment: d.assessment||'',
+      rawText: text
+    };
+    showPreview(extractedData);
+
+  } catch(e) {
+    document.getElementById('report-loading').classList.add('hidden');
+    document.getElementById('report-idle').classList.remove('hidden');
+    // If it was an auth error, make sure banner is shown
+    if (!puterSignedIn) {
+      document.getElementById('signin-banner').style.display = 'flex';
+    }
+  }
+}
+
+// ── SHOW PREVIEW ──────────────────────────────────────────
+function showPreview(data){
+  document.getElementById('report-preview').classList.remove('hidden');
+  document.getElementById('preview-raw').textContent=`"${data.rawText}"`;
+  document.getElementById('prev-location').textContent=data.location;
+  document.getElementById('prev-urgency').innerHTML=`<span class="urgency-badge urgency-${data.urgency}">${data.urgency.charAt(0).toUpperCase()+data.urgency.slice(1)}</span>`;
+  document.getElementById('prev-resource').textContent=data.resourceType;
+  document.getElementById('prev-people').textContent=data.numberOfPeople+' people';
+  document.getElementById('prev-assessment').textContent=data.assessment;
+  document.getElementById('prev-score').textContent=data.priorityScore+'/100';
+  const bar=document.getElementById('prev-bar');
+  bar.style.width=data.priorityScore+'%';
+  bar.style.background=data.priorityScore>=80?'#e53935':data.priorityScore>=60?'#fb8c00':data.priorityScore>=40?'#f9a825':'#43a047';
+}
+
+// ── CONFIRM SAVE ──────────────────────────────────────────
+function confirmSave(){
+  if(!extractedData)return;
+  needs.push({...extractedData,id:Date.now().toString(),reportedBy:userName,timestamp:new Date().toISOString()});
+  saveNeeds();updateMapMarkers();renderNeeds();
+  document.getElementById('report-preview').classList.add('hidden');
+  document.getElementById('report-success').classList.remove('hidden');
+}
+
+// ── RESET ─────────────────────────────────────────────────
+function resetReport(){
+  ['report-idle','report-loading','report-preview','report-success','report-not-need']
+    .forEach(id=>document.getElementById(id).classList[id==='report-idle'?'remove':'add']('hidden'));
+  document.getElementById('need-text').value='';
+  extractedData=null;
+}
+</script>
+</body>
+</html>
