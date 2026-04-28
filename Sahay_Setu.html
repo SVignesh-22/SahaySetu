@@ -341,6 +341,152 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#f5f7f2;color:#1a2e1a
 <script src="https://js.puter.com/v2/"></script>
 <script>
 let userName = '', userRole = '';
+
+// 🔥 LOCATION DATABASE (fallback)
+const LOCATION_DB = {
+  // ── Bengaluru localities ──
+  'yelahanka':[13.1007,77.5963],'koramangala':[12.9279,77.6271],'whitefield':[12.9698,77.7500],
+  'jayanagar':[12.9307,77.5872],'indiranagar':[12.9719,77.6412],'btm layout':[12.9166,77.6101],
+  'btm':[12.9166,77.6101],'hsr layout':[12.9116,77.6389],'hsr':[12.9116,77.6389],
+  'electronic city':[12.8445,77.6602],'marathahalli':[12.9591,77.6974],'jp nagar':[12.9063,77.5857],
+  'rajajinagar':[12.9910,77.5522],'malleshwaram':[13.0035,77.5711],'hebbal':[13.0350,77.5970],
+  'kr puram':[13.0075,77.6948],'bannerghatta':[12.8631,77.5754],'vijayanagar':[12.9719,77.5327],
+  'nagarbhavi':[12.9544,77.5059],'bommanahalli':[12.8960,77.6267],'hennur':[13.0358,77.6324],
+  'yeshwanthpur':[13.0214,77.5555],'bellandur':[12.9260,77.6762],'sarjapur':[12.8586,77.7860],
+  'domlur':[12.9609,77.6387],'shivajinagar':[12.9838,77.5985],'basavanagudi':[12.9416,77.5757],
+  'banaswadi':[13.0100,77.6500],'ulsoor':[12.9784,77.6182],'brookefield':[12.9699,77.7271],
+  'kammanahalli':[13.0052,77.6388],'jalahalli':[13.0333,77.5500],'peenya':[13.0281,77.5170],
+  'kengeri':[12.9144,77.4849],'majestic':[12.9762,77.5713],'mg road':[12.9756,77.6097],
+  'richmond town':[12.9631,77.5985],'frazer town':[12.9833,77.6052],'cv raman nagar':[12.9847,77.6607],
+  'bangalore':[12.9716,77.5946],'bengaluru':[12.9716,77.5946],
+  // ── Mumbai ──
+  'dharavi':[19.0413,72.8530],'kurla':[19.0728,72.8826],'bandra':[19.0596,72.8295],
+  'andheri':[19.1136,72.8697],'dadar':[19.0178,72.8478],'chembur':[19.0522,72.8993],
+  'worli':[18.9987,72.8153],'malad':[19.1873,72.8487],'borivali':[19.2307,72.8567],
+  'thane':[19.2183,72.9781],'navi mumbai':[19.0330,73.0297],'colaba':[18.9067,72.8147],
+  'powai':[19.1197,72.9051],'vikhroli':[19.1094,72.9248],'mulund':[19.1726,72.9609],
+  'goregaon':[19.1663,72.8526],'kandivali':[19.2059,72.8492],'jogeshwari':[19.1372,72.8498],
+  'mumbai':[19.0760,72.8777],'bombay':[19.0760,72.8777],
+  // ── Delhi NCR ──
+  'connaught place':[28.6315,77.2167],'lajpat nagar':[28.5677,77.2433],'karol bagh':[28.6517,77.1909],
+  'saket':[28.5244,77.2066],'rohini':[28.7495,77.1167],'dwarka':[28.5921,77.0460],
+  'janakpuri':[28.6219,77.0809],'pitampura':[28.7018,77.1310],'vasant kunj':[28.5200,77.1600],
+  'nehru place':[28.5491,77.2520],'shahdara':[28.6701,77.2888],'mayur vihar':[28.6092,77.2985],
+  'preet vihar':[28.6437,77.2932],'east delhi':[28.6600,77.3100],'south delhi':[28.5355,77.2100],
+  'noida':[28.5355,77.3910],'gurgaon':[28.4595,77.0266],'gurugram':[28.4595,77.0266],
+  'faridabad':[28.4089,77.3178],'ghaziabad':[28.6692,77.4538],
+  'delhi':[28.7041,77.1025],'new delhi':[28.6139,77.2090],
+  // ── Chennai ──
+  'anna nagar':[13.0827,80.2084],'adyar':[13.0067,80.2567],'t nagar':[13.0418,80.2341],
+  'velachery':[12.9815,80.2180],'tambaram':[12.9249,80.1000],'porur':[13.0346,80.1572],
+  'perambur':[13.1166,80.2450],'marina beach':[13.0500,80.2824],'mylapore':[13.0368,80.2676],
+  'ambattur':[13.1143,80.1548],'avadi':[13.1065,80.0982],'chromepet':[12.9516,80.1462],
+  'chennai':[13.0827,80.2707],'madras':[13.0827,80.2707],
+  // ── Hyderabad ──
+  'banjara hills':[17.4138,78.4386],'jubilee hills':[17.4326,78.4071],'hitech city':[17.4435,78.3772],
+  'gachibowli':[17.4401,78.3489],'secunderabad':[17.4399,78.4983],'ameerpet':[17.4374,78.4483],
+  'dilsukhnagar':[17.3688,78.5247],'kukatpally':[17.4849,78.4138],'lb nagar':[17.3487,78.5528],
+  'uppal':[17.4051,78.5597],'madhapur':[17.4484,78.3883],'kondapur':[17.4598,78.3607],
+  'hyderabad':[17.3850,78.4867],'cyberabad':[17.4435,78.3772],
+  // ── Kolkata ──
+  'salt lake':[22.5769,88.4220],'park street':[22.5528,88.3511],'howrah':[22.5958,88.2636],
+  'dumdum':[22.6420,88.3974],'jadavpur':[22.4966,88.3690],'tollygunge':[22.4992,88.3461],
+  'behala':[22.4925,88.3106],'barasat':[22.7227,88.4823],'new town':[22.5858,88.4791],
+  'kolkata':[22.5726,88.3639],'calcutta':[22.5726,88.3639],
+  // ── Pune ──
+  'kothrud':[18.5074,73.8077],'hadapsar':[18.5018,73.9260],'baner':[18.5590,73.7868],
+  'wakad':[18.5979,73.7614],'viman nagar':[18.5679,73.9143],'aundh':[18.5589,73.8087],
+  'shivajinagar pune':[18.5302,73.8476],'pimpri':[18.6186,73.8037],'chinchwad':[18.6446,73.7997],
+  'pune':[18.5204,73.8567],
+  // ── Ahmedabad ──
+  'navrangpura':[23.0395,72.5603],'satellite':[23.0234,72.5097],'maninagar':[22.9963,72.6010],
+  'bopal':[23.0378,72.4742],'thaltej':[23.0498,72.4973],'vastrapur':[23.0329,72.5254],
+  'ahmedabad':[23.0225,72.5714],'surat':[21.1702,72.8311],'vadodara':[22.3072,73.1812],
+  'rajkot':[22.3039,70.8022],'gandhinagar':[23.2156,72.6369],
+  // ── Other major cities ──
+  'jaipur':[26.9124,75.7873],'jodhpur':[26.2389,73.0243],'udaipur':[24.5854,73.7125],
+  'lucknow':[26.8467,80.9462],'kanpur':[26.4499,80.3319],'agra':[27.1767,78.0081],
+  'varanasi':[25.3176,82.9739],'allahabad':[25.4358,81.8463],'prayagraj':[25.4358,81.8463],
+  'meerut':[28.9845,77.7064],'bareilly':[28.3670,79.4304],'aligarh':[27.8974,78.0880],
+  'kochi':[9.9312,76.2673],'ernakulam':[9.9816,76.2999],'thiruvananthapuram':[8.5241,76.9366],
+  'trivandrum':[8.5241,76.9366],'kozhikode':[11.2588,75.7804],'calicut':[11.2588,75.7804],
+  'thrissur':[10.5276,76.2144],'kannur':[11.8745,75.3704],'kollam':[8.8932,76.6141],
+  'coimbatore':[11.0168,76.9558],'madurai':[9.9252,78.1198],'trichy':[10.7905,78.7047],
+  'salem':[11.6643,78.1460],'tirunelveli':[8.7139,77.7567],'vellore':[12.9165,79.1325],
+  'bhopal':[23.2599,77.4126],'indore':[22.7196,75.8577],'gwalior':[26.2183,78.1828],
+  'jabalpur':[23.1815,79.9864],'ujjain':[23.1828,75.7772],
+  'nagpur':[21.1458,79.0882],'nashik':[19.9975,73.7898],'aurangabad':[19.8762,75.3433],
+  'patna':[25.5941,85.1376],'gaya':[24.7955,85.0002],'muzaffarpur':[26.1209,85.3647],
+  'ranchi':[23.3441,85.3096],'jamshedpur':[22.8046,86.2029],'dhanbad':[23.7957,86.4304],
+  'bhubaneswar':[20.2961,85.8245],'cuttack':[20.4625,85.8830],'rourkela':[22.2604,84.8536],
+  'chandigarh':[30.7333,76.7794],'amritsar':[31.6340,74.8723],'ludhiana':[30.9010,75.8573],
+  'jalandhar':[31.3260,75.5762],'patiala':[30.3398,76.3869],'mohali':[30.7046,76.7179],
+  'vizag':[17.6868,83.2185],'visakhapatnam':[17.6868,83.2185],'vijayawada':[16.5062,80.6480],
+  'guntur':[16.3067,80.4365],'tirupati':[13.6288,79.4192],'warangal':[17.9784,79.5941],
+  'mysore':[12.2958,76.6394],'mysuru':[12.2958,76.6394],'mangalore':[12.9141,74.8560],
+  'hubli':[15.3647,75.1240],'belagavi':[15.8497,74.4977],'davangere':[14.4644,75.9218],
+  'shimoga':[13.9299,75.5681],'tumkur':[13.3379,77.1173],'udupi':[13.3409,74.7421],
+  'guwahati':[26.1445,91.7362],'shillong':[25.5788,91.8933],'imphal':[24.8170,93.9368],
+  'shimla':[31.1048,77.1734],'dehradun':[30.3165,78.0322],'haridwar':[29.9457,78.1642],
+  'srinagar':[34.0837,74.7973],'jammu':[32.7266,74.8570],'leh':[34.1526,77.5771],
+  'raipur':[21.2514,81.6296],'panaji':[15.4909,73.8278],'goa':[15.2993,74.1240],
+  'puducherry':[11.9416,79.8083],'pondicherry':[11.9416,79.8083],
+  'bhubaneswar':[20.2961,85.8245],'vijayawada':[16.5062,80.6480],
+};
+function fallbackExtract(text) {
+  text = text.toLowerCase();
+
+  let foundLocation = "Unknown Location";
+  let lat = 20.5937, lng = 78.9629;
+
+  // 🔍 find location
+  for (const key in LOCATION_DB) {
+    if (text.includes(key)) {
+      foundLocation = key;
+      lat = LOCATION_DB[key][0];
+      lng = LOCATION_DB[key][1];
+      break;
+    }
+  }
+
+  // urgency
+  let urgency = "medium";
+
+// 🔥 check negative FIRST
+if (text.includes("not urgent") || text.includes("not so urgent") || text.includes("no urgency")) {
+  urgency = "low";
+}
+else if (text.includes("urgent") || text.includes("emergency") || text.includes("immediately")) {
+  urgency = "urgent";
+}
+else if (text.includes("soon") || text.includes("asap")) {
+  urgency = "high";
+}
+// 👥 extract number of people
+let numberOfPeople = 1;
+
+const match = text.match(/(\d+)/);
+if (match) {
+  numberOfPeople = parseInt(match[1]);
+
+  // 🔥 multiply if families mentioned
+  if (text.includes("families") || text.includes("family")) {
+    numberOfPeople *= 4;
+  }
+}
+  return {
+    location: foundLocation,
+    lat,
+    lng,
+    urgency,
+    resourceType: "General Aid",
+    numberOfPeople,
+    priorityScore: urgency === "urgent" ? 85 : urgency === "high" ? 70 : urgency === "low" ? 30 : 50,
+    assessment: `Based on the description, this appears to be a ${urgency} priority situation. Immediate attention may be required.`,
+    rawText: text
+  };
+}
+
 let needs = [];
 let doneCount = parseInt(localStorage.getItem('ss_done') || '0');
 let currentFilter = 'all';
@@ -654,9 +800,11 @@ if (!d) {
     }
   }
 
-  // All retries failed
-  document.getElementById('report-loading').classList.add('hidden');
-  document.getElementById('report-idle').classList.remove('hidden');
+// 🔥 fallback instead of failing
+document.getElementById('report-loading').classList.add('hidden');
+
+extractedData = fallbackExtract(text);
+showPreview(extractedData);
   if (!puterSignedIn) {
     document.getElementById('signin-banner').style.display = 'flex';
   }
