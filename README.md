@@ -56,7 +56,8 @@ All data is synchronized in real-time using Firebase, ensuring every volunteer s
 - Automatic urgency detection & priority scoring  
 - Filter-based dashboard (urgent, high, medium, low)  
 - One-click reporting and confirmation flow  
-- Task resolution tracking (mark as done)  
+- Task resolution tracking (mark as done)
+- Fallback Mechanism if AI isn't responding or is unavailable  
 
 ---
 
