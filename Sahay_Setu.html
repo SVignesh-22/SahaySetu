@@ -302,10 +302,46 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#f5f7f2;color:#1a2e1a
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // YOUR FIREBASE CONFIG — paste yours here
+  const firebaseConfig = {
+  apiKey: "AIzaSyDrGsIx6LfvspqbRz-Gz54ZEHvehmNTJl0",
+  authDomain: "solutionhackathon-vig.firebaseapp.com",
+  projectId: "solutionhackathon-vig",
+  storageBucket: "solutionhackathon-vig.firebasestorage.app",
+  messagingSenderId: "324582449598",
+  appId: "1:324582449598:web:1b4a29f7ea5419bf36d9ef"
+};
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const needsCol = collection(db, "needs");
+
+  // Expose to global scope so rest of code can use it
+  window.db = db;
+  window.needsCol = needsCol;
+  window.fsAddDoc = addDoc;
+  window.fsDeleteDoc = deleteDoc;
+  window.fsDoc = doc;
+  window.fsOnSnapshot = onSnapshot;
+
+  // Listen to real-time updates from Firestore
+  onSnapshot(needsCol, (snapshot) => {
+  needs = snapshot.docs.map(d => ({ id: d.id, ...d.data() })); // THIS is the fix
+  window.needs = needs;
+
+  if (window.renderNeeds) window.renderNeeds();
+  if (window.updateMapMarkers) window.updateMapMarkers();
+});
+</script>
 <script src="https://js.puter.com/v2/"></script>
 <script>
 let userName = '', userRole = '';
-let needs = JSON.parse(localStorage.getItem('ss_needs') || '[]');
+let needs = [];
 let doneCount = parseInt(localStorage.getItem('ss_done') || '0');
 let currentFilter = 'all';
 let extractedData = null;
@@ -359,6 +395,16 @@ function doLogin() {
   document.getElementById('user-badge').textContent = n;
   setTimeout(initMap, 300);
   renderNeeds();
+  window.renderNeeds = renderNeeds;
+  window.updateMapMarkers = updateMapMarkers;
+  // Warm up Puter in background silently
+  setTimeout(async () => {
+    try {
+      if (puterSignedIn) {
+        await puter.ai.chat('hi', { model: 'gemini-2.0-flash' });
+      }
+    } catch(e) {}
+  }, 2000);
 }
 
 // ── TABS ──────────────────────────────────────────────────
@@ -438,10 +484,20 @@ function renderNeeds(){
     </div>`).join('');
 }
 
-function markDone(id){
-  needs=needs.filter(n=>n.id!==id);
-  doneCount++;
-  saveNeeds();updateMapMarkers();renderNeeds();
+async function markDone(id) {
+  try {
+    await window.fsDeleteDoc(window.fsDoc(window.db, "needs", id));
+    doneCount++;
+    localStorage.setItem('ss_done', String(doneCount));
+  } catch(e) {
+    needs = needs.filter(n => n.id !== id);
+    doneCount++;
+    saveNeeds();
+    updateMapMarkers();
+    renderNeeds();
+    window.renderNeeds = renderNeeds;
+window.updateMapMarkers = updateMapMarkers;
+  }
 }
 
 // ── VOICE ─────────────────────────────────────────────────
@@ -461,7 +517,6 @@ function toggleVoice(){
 
 // ── GEMINI CALL ───────────────────────────────────────────
 async function callGemini(prompt) {
-  // If not signed in yet, trigger sign in first (this is inside a user gesture chain)
   if (!puterSignedIn) {
     await puter.auth.signIn();
     puterSignedIn = true;
@@ -469,21 +524,19 @@ async function callGemini(prompt) {
     if (b) b.style.display = 'none';
   }
   const response = await puter.ai.chat(prompt, { model: 'gemini-2.0-flash' });
-// Handle all possible Puter response formats
-if (typeof response === 'string') return response;
-if (response?.message?.content) {
-  const c = response.message.content;
-  if (typeof c === 'string') return c;
-  if (Array.isArray(c)) return c[0]?.text || c[0] || '';
-}
-if (response?.text) return response.text;
-if (response?.content) {
-  const c = response.content;
-  if (typeof c === 'string') return c;
-  if (Array.isArray(c)) return c[0]?.text || c[0] || '';
-}
-// Last resort — stringify and let JSON parser find the object
-return JSON.stringify(response);
+  if (typeof response === 'string') return response;
+  if (response?.message?.content) {
+    const c = response.message.content;
+    if (typeof c === 'string') return c;
+    if (Array.isArray(c)) return c.map(x => x?.text || x || '').join('');
+  }
+  if (response?.text) return response.text;
+  if (response?.content) {
+    const c = response.content;
+    if (typeof c === 'string') return c;
+    if (Array.isArray(c)) return c.map(x => x?.text || x || '').join('');
+  }
+  return JSON.stringify(response);
 }
 
 // ── PROCESS NEED ──────────────────────────────────────────
@@ -518,43 +571,96 @@ If NOT a need:
 
 Urgency: urgent=80-100 (life threat), high=60-79 (hours), medium=40-59 (days), low=1-39 (weeks)`;
 
+  // Retry up to 4 times with delay
+  let lastError = null;
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    try {
+      const txt = await callGemini(prompt);
+      if (!txt || txt.trim() === '') {
+        // Empty response — wait and retry
+        await new Promise(r => setTimeout(r, 1500));
+        continue;
+      }
+      // Try multiple JSON extraction strategies
+let d = null;
+try {
+  // Strategy 1: direct parse
+  d = JSON.parse(txt.trim());
+} catch(e1) {
   try {
-    const txt = await callGemini(prompt);
+    // Strategy 2: find JSON object in text
     const match = txt.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error('no json');
-    const d = JSON.parse(match[0]);
-
-    document.getElementById('report-loading').classList.add('hidden');
-
-    if (!d.isNeed) {
-      document.getElementById('report-not-need').classList.remove('hidden');
-      document.getElementById('not-need-reason').textContent = d.reason || 'This does not appear to be a community need.';
-      return;
-    }
-
-    extractedData = {
-      location: d.location||'Unknown Location',
-      lat: parseFloat(d.lat)||20.5937,
-      lng: parseFloat(d.lng)||78.9629,
-      urgency: ['urgent','high','medium','low'].includes(d.urgency)?d.urgency:'medium',
-      resourceType: d.resourceType||'General Aid',
-      numberOfPeople: Math.max(1,parseInt(d.numberOfPeople)||1),
-      priorityScore: Math.min(100,Math.max(1,parseInt(d.priorityScore)||50)),
-      assessment: d.assessment||'',
-      rawText: text
-    };
-    showPreview(extractedData);
-
-  } catch(e) {
-    document.getElementById('report-loading').classList.add('hidden');
-    document.getElementById('report-idle').classList.remove('hidden');
-    // If it was an auth error, make sure banner is shown
-    if (!puterSignedIn) {
-      document.getElementById('signin-banner').style.display = 'flex';
+    if (match) d = JSON.parse(match[0]);
+  } catch(e2) {
+    try {
+      // Strategy 3: find JSON and clean common issues
+      const match = txt.match(/\{[\s\S]*\}/);
+      if (match) {
+        const cleaned = match[0]
+          .replace(/,\s*}/g, '}')
+          .replace(/,\s*]/g, ']')
+          .replace(/[\u0000-\u001F]+/g, ' ');
+        d = JSON.parse(cleaned);
+      }
+    } catch(e3) {
+      // Strategy 4: manually extract key fields from text
+      d = {
+        isNeed: txt.includes('"isNeed":true') || txt.includes('"isNeed": true'),
+        location: (txt.match(/"location"\s*:\s*"([^"]+)"/) || [])[1] || 'Unknown Location',
+        lat: parseFloat((txt.match(/"lat"\s*:\s*([\d.]+)/) || [])[1]) || 20.5937,
+        lng: parseFloat((txt.match(/"lng"\s*:\s*([\d.]+)/) || [])[1]) || 78.9629,
+        urgency: (txt.match(/"urgency"\s*:\s*"(urgent|high|medium|low)"/) || [])[1] || 'medium',
+        resourceType: (txt.match(/"resourceType"\s*:\s*"([^"]+)"/) || [])[1] || 'General Aid',
+        numberOfPeople: parseInt((txt.match(/"numberOfPeople"\s*:\s*(\d+)/) || [])[1]) || 1,
+        priorityScore: parseInt((txt.match(/"priorityScore"\s*:\s*(\d+)/) || [])[1]) || 50,
+        assessment: (txt.match(/"assessment"\s*:\s*"([^"]+)"/) || [])[1] || '',
+        reason: (txt.match(/"reason"\s*:\s*"([^"]+)"/) || [])[1] || ''
+      };
     }
   }
 }
+if (!d) {
+  await new Promise(r => setTimeout(r, 1000));
+  continue;
+}
 
+      document.getElementById('report-loading').classList.add('hidden');
+
+      if (!d.isNeed) {
+        document.getElementById('report-not-need').classList.remove('hidden');
+        document.getElementById('not-need-reason').textContent = d.reason || 'This does not appear to be a community need.';
+        return;
+      }
+
+      extractedData = {
+        location: d.location||'Unknown Location',
+        lat: parseFloat(d.lat)||20.5937,
+        lng: parseFloat(d.lng)||78.9629,
+        urgency: ['urgent','high','medium','low'].includes(d.urgency)?d.urgency:'medium',
+        resourceType: d.resourceType||'General Aid',
+        numberOfPeople: Math.max(1,parseInt(d.numberOfPeople)||1),
+        priorityScore: Math.min(100,Math.max(1,parseInt(d.priorityScore)||50)),
+        assessment: d.assessment||'',
+        rawText: text
+      };
+      showPreview(extractedData);
+      return; // success — exit
+
+    } catch(e) {
+      lastError = e;
+      if (attempt < 4) {
+        await new Promise(r => setTimeout(r, 800 * attempt));
+      }
+    }
+  }
+
+  // All retries failed
+  document.getElementById('report-loading').classList.add('hidden');
+  document.getElementById('report-idle').classList.remove('hidden');
+  if (!puterSignedIn) {
+    document.getElementById('signin-banner').style.display = 'flex';
+  }
+}
 // ── SHOW PREVIEW ──────────────────────────────────────────
 function showPreview(data){
   document.getElementById('report-preview').classList.remove('hidden');
@@ -571,12 +677,28 @@ function showPreview(data){
 }
 
 // ── CONFIRM SAVE ──────────────────────────────────────────
-function confirmSave(){
-  if(!extractedData)return;
-  needs.push({...extractedData,id:Date.now().toString(),reportedBy:userName,timestamp:new Date().toISOString()});
-  saveNeeds();updateMapMarkers();renderNeeds();
-  document.getElementById('report-preview').classList.add('hidden');
-  document.getElementById('report-success').classList.remove('hidden');
+async function confirmSave() {
+  if (!extractedData) return;
+  const coords = [extractedData.lat, extractedData.lng];
+  const need = {
+    ...extractedData,
+    reportedBy: userName,
+    timestamp: new Date().toISOString()
+  };
+  try {
+    await window.fsAddDoc(window.needsCol, need);
+    document.getElementById('report-preview').classList.add('hidden');
+    document.getElementById('report-success').classList.remove('hidden');
+  } catch(e) {
+    // Fallback to localStorage if Firebase fails
+    need.id = Date.now().toString();
+    needs.push(need);
+    saveNeeds();
+    updateMapMarkers();
+    renderNeeds();
+    document.getElementById('report-preview').classList.add('hidden');
+    document.getElementById('report-success').classList.remove('hidden');
+  }
 }
 
 // ── RESET ─────────────────────────────────────────────────
